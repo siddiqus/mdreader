@@ -3,15 +3,15 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import zlib from 'node:zlib';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Marked } from 'marked';
 import hljs from 'highlight.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = fs.realpathSync(process.env.MDR_ROOT || path.join(HERE, '..', 'repos'));
-const PORT = Number(process.env.MDR_PORT || 7780);
-const HOST = process.env.MDR_HOST || '127.0.0.1';
+const require = createRequire(import.meta.url);
+let ROOT;
 const REINDEX_MS = 10 * 60 * 1000;
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 
@@ -337,7 +337,7 @@ function send(res, status, body, type = 'text/html; charset=utf-8', extra = {}) 
 let hljsCss = null;
 function highlightCss() {
   if (!hljsCss) {
-    const styles = path.join(HERE, 'node_modules', 'highlight.js', 'styles');
+    const styles = path.dirname(require.resolve('highlight.js/styles/github.min.css'));
     const light = fs.readFileSync(path.join(styles, 'github.min.css'), 'utf8');
     const dark = fs.readFileSync(path.join(styles, 'github-dark.min.css'), 'utf8');
     hljsCss = `@media (prefers-color-scheme: light){${light}}\n@media (prefers-color-scheme: dark){${dark}}\n`
@@ -380,7 +380,7 @@ async function dispatch(req, res) {
     }
     if (route === '/vendor/hljs.css') return send(res, 200, highlightCss(), MIME['.css'], VENDOR_CACHE);
     if (route === '/vendor/mermaid.min.js') {
-      mermaidGz ??= zlib.gzipSync(await fsp.readFile(path.join(HERE, 'node_modules', 'mermaid', 'dist', 'mermaid.min.js')));
+      mermaidGz ??= zlib.gzipSync(await fsp.readFile(require.resolve('mermaid/dist/mermaid.min.js')));
       if (acceptsGzip(res)) {
         res.writeHead(200, { 'Content-Type': MIME['.js'], 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding', ...VENDOR_CACHE });
         return res.end(mermaidGz);
@@ -452,10 +452,33 @@ async function dispatch(req, res) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  http.createServer(handle).listen(PORT, HOST, () => {
-    console.log(`mdreader serving ${ROOT} on http://${HOST}:${PORT}`);
-    reindex();
-    setInterval(reindex, REINDEX_MS).unref();
+export const DEFAULT_PORT = 7780;
+
+export function start({ root, port, host = '127.0.0.1', strictPort = false }) {
+  ROOT = fs.realpathSync(root);
+  const server = http.createServer(handle);
+  let p = port ?? DEFAULT_PORT;
+  return new Promise((resolve, reject) => {
+    server.on('error', err => {
+      if (err.code === 'EADDRINUSE' && !strictPort && p < (port ?? DEFAULT_PORT) + 20) server.listen(++p, host);
+      else reject(err);
+    });
+    server.on('listening', () => {
+      reindex();
+      setInterval(reindex, REINDEX_MS).unref();
+      const shown = host === '0.0.0.0' || host === '::' ? 'localhost' : host.includes(':') ? `[${host}]` : host;
+      resolve({ server, root: ROOT, url: `http://${shown}:${server.address().port}` });
+    });
+    server.listen(p, host);
   });
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { root, url } = await start({
+    root: process.env.MDR_ROOT || process.cwd(),
+    port: process.env.MDR_PORT ? Number(process.env.MDR_PORT) : undefined,
+    host: process.env.MDR_HOST,
+    strictPort: Boolean(process.env.MDR_PORT),
+  });
+  console.log(`mdreader serving ${root} on ${url}`);
 }

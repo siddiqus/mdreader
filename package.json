@@ -1,11 +1,20 @@
 {
-  "name": "mdreader",
+  "name": "@siddiqus/mdreader",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "Mobile-friendly, read-only markdown reader and file browser",
+  "description": "Mobile-friendly, read-only markdown reader and file browser for any folder",
+  "keywords": ["markdown", "reader", "viewer", "docs", "pwa", "mermaid", "cli"],
+  "license": "MIT",
+  "author": "Sabbir Siddiqui",
+  "repository": { "type": "git", "url": "git+https://github.com/siddiqus/mdreader.git" },
+  "homepage": "https://github.com/siddiqus/mdreader#readme",
+  "bugs": "https://github.com/siddiqus/mdreader/issues",
+  "bin": { "mdr": "bin/mdr.mjs" },
+  "files": ["bin/", "public/", "server.mjs"],
+  "engines": { "node": ">=20" },
+  "publishConfig": { "access": "public" },
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node bin/mdr.mjs",
     "test": "node --test"
   },
   "dependencies": {
