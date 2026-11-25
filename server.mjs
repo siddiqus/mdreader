@@ -220,10 +220,11 @@ function crumbs(rel) {
 }
 
 const reqCtx = new AsyncLocalStorage();
+const FS_NAMES = { s: 'Small', m: 'Medium', l: 'Large' };
 
-function page({ title, body }) {
-  const sideClosed = reqCtx.getStore()?.sideClosed;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+function page({ title, body, readable = false }) {
+  const { sideClosed, fs = 'm' } = reqCtx.getStore() || {};
+  return `<!doctype html><html lang="en" class="fs-${fs}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
@@ -233,17 +234,18 @@ function page({ title, body }) {
 <body class="${sideClosed ? 'side-closed' : 'side-open'}"><header class="top"><div class="bar">
 <div class="bar-side"><button type="button" class="side-toggle" aria-label="Toggle file tree" aria-controls="side">☰</button>
 <a class="home" href="/browse/" aria-label="Home">⌂</a></div>
-<div class="bar-main"><a class="find" href="/search" role="button" aria-keyshortcuts="Meta+K Control+K"><span class="find-ic" aria-hidden="true">⌕</span><span class="find-tx">Search files…</span><kbd class="find-kbd">⌘K</kbd></a></div>
+<div class="bar-main"><a class="find" href="/search" role="button" aria-keyshortcuts="Meta+K Control+K"><span class="find-ic" aria-hidden="true">⌕</span><span class="find-tx">Search files…</span><kbd class="find-kbd">⌘K</kbd></a>${readable ? '<button type="button" class="read-btn" aria-label="Reading mode" title="Reading mode (R)" aria-keyshortcuts="R"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3 5v13c4-.5 7 0 9 1.5 2-1.5 5-2 9-1.5V5c-4-.5-7 0-9 1.5Zm0 0V19.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span class="read-tx">Read</span></button>' : ''}</div>
 </div></header>
 <div class="layout"><aside class="side" id="side" aria-label="File tree">
 <div class="side-tools"><span class="side-title">${esc(path.basename(ROOT))}</span>
 <button type="button" data-act="md" class="t-md" aria-pressed="true" title="Markdown only">.md</button>
+<button type="button" data-act="fs" class="t-fs" title="Text size: ${FS_NAMES[fs]} (click to change)" aria-label="Text size: ${FS_NAMES[fs]}"><span class="a1">A</span><span class="a2">A</span><small>${fs.toUpperCase()}</small></button>
 <button type="button" data-act="reveal" title="Reveal current file">◎</button>
 <button type="button" data-act="collapse" title="Collapse all">⊟</button>
 <button type="button" data-act="close" class="t-close" title="Close" aria-label="Close file tree">✕</button></div>
 <nav class="tree" role="tree"></nav></aside>
 <main>${body}</main></div><div class="side-scrim"></div>
-<script src="/static/app.js" defer></script></body></html>`;
+<script src="/static/app.js" defer></script>${readable ? '<script src="/static/reader.js" defer></script>' : ''}</body></html>`;
 }
 
 const ago = ms => {
@@ -360,7 +362,8 @@ function searchResults(q, mdOnly) {
 
 export function handle(req, res) {
   const sideClosed = /(?:^|;\s*)mdr-side=0(?:;|$)/.test(req.headers.cookie || '');
-  return reqCtx.run({ sideClosed }, () => dispatch(req, res));
+  const fs = (req.headers.cookie || '').match(/(?:^|;\s*)mdr-fs=([sml])(?:;|$)/)?.[1] || 'm';
+  return reqCtx.run({ sideClosed, fs }, () => dispatch(req, res));
 }
 
 const MAX_TREE_DIRS = 500;
@@ -441,7 +444,7 @@ async function dispatch(req, res) {
     const body = asSource
       ? `${v.head}<pre class="src">${highlight(v.text, isMd(rel) ? 'markdown' : (path.extname(rel).slice(1) || path.basename(rel)).toLowerCase())}</pre>`
       : `${v.head}<article class="md">${renderMarkdown(v.text, rel)}</article>`;
-    return send(res, 200, page({ title: path.basename(rel), body }));
+    return send(res, 200, page({ title: path.basename(rel), body, readable: !asSource }));
   } catch (err) {
     if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return notFound(res);
     console.error(req.url, err);

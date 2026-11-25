@@ -1,4 +1,4 @@
-const CACHE = 'mdreader-v4';
+const CACHE = 'mdreader-v7';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(

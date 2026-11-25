@@ -313,6 +313,21 @@ if (location.pathname.startsWith('/view/') && !location.search) {
       saveOpen(); await fetchDirs(missing()); render(); reveal('center');
     }
     if (act === 'close') body.classList.remove('drawer-open');
+    if (act === 'fs') {
+      // S → M → L → S; the server reads the cookie so the next page renders at this size directly
+      const sizes = ['s', 'm', 'l'];
+      const names = { s: 'Small', m: 'Medium', l: 'Large' };
+      const html = document.documentElement;
+      const cur = sizes.find(z => html.classList.contains(`fs-${z}`)) || 'm';
+      const next = sizes[(sizes.indexOf(cur) + 1) % 3];
+      html.classList.replace(`fs-${cur}`, `fs-${next}`) || html.classList.add(`fs-${next}`);
+      document.cookie = `mdr-fs=${next}; path=/; max-age=31536000; samesite=lax`;
+      const b = e.target.closest('button');
+      b.querySelector('small').textContent = next.toUpperCase();
+      b.title = `Text size: ${names[next]} (click to change)`;
+      b.setAttribute('aria-label', `Text size: ${names[next]}`);
+      setTopH();
+    }
     if (act === 'md') {
       mdOnly = !mdOnly;
       try { localStorage.setItem(MD_KEY, mdOnly ? '1' : '0'); } catch {}
