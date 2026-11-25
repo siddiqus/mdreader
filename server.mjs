@@ -239,7 +239,6 @@ function page({ title, body }) {
 <div class="side-tools"><span class="side-title">${esc(path.basename(ROOT))}</span>
 <button type="button" data-act="md" class="t-md" aria-pressed="true" title="Markdown only">.md</button>
 <button type="button" data-act="reveal" title="Reveal current file">◎</button>
-<button type="button" data-act="expand" title="Expand one level">⊞</button>
 <button type="button" data-act="collapse" title="Collapse all">⊟</button>
 <button type="button" data-act="close" class="t-close" title="Close" aria-label="Close file tree">✕</button></div>
 <nav class="tree" role="tree"></nav></aside>
