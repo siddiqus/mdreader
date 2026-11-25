@@ -54,6 +54,14 @@ test('renderMarkdown labels table cells with their column header', () => {
   assert.match(html, /class="tbl-toggle"/);
 });
 
+test('renderMarkdown tags numeric and long-text table columns', () => {
+  const long = 'x'.repeat(41);
+  const html = renderMarkdown(`| n | p | ms | id | s |\n|---|---|---|---|---|\n| 4,694,280 | 11.15% | 178/278 | a1b2 | \`GET /v3/a\` |\n| — | 2.3x | 90/120 | 7 | ${long} |`, 'a.md');
+  assert.match(html, /<th class="num">n<\/th><th class="num">p<\/th><th class="num">ms<\/th><th>id<\/th><th class="wide">s<\/th>/);
+  assert.match(html, /<td data-label="n" class="num">—<\/td>/);
+  assert.match(html, /<code>GET \/<wbr>v3\/<wbr>a<\/code>/);
+});
+
 test('fenced code is syntax highlighted; unknown languages stay escaped', () => {
   const html = renderMarkdown('```ts\nconst a: number = 1;\n```\n\n```nope\n<b>x</b>\n```', 'a.md');
   assert.match(html, /<code class="hljs language-ts"><span class="hljs-keyword">const<\/span>/);

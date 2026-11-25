@@ -143,8 +143,30 @@ kbd {
 .tbl table { display: block; overflow-x: auto; border-collapse: collapse; max-width: 100%; -webkit-overflow-scrolling: touch; }
 .md th, .md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 .md th { background: var(--soft); }
-.md tr:nth-child(2n) td { background: color-mix(in srgb, var(--soft) 50%, transparent); }
+.md tr:nth-child(2n) td { background: color-mix(in srgb, var(--soft) 50%, var(--bg)); }
+.md th, .md td { overflow-wrap: normal; }
+.md td.num, .md th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.md td.wide { min-width: 22em; }
 .tbl-toggle { display: none; }
+
+@media (min-width: 700.02px) {
+  /* wide tables grow past the reading column, centred on it, up to the content area */
+  :root { --tbl-max: calc(100vw - 2 * var(--gutter) - 16px); }
+  main .md .tbl { width: max-content; min-width: 100%; max-width: var(--tbl-max); position: relative; left: 50%; transform: translateX(-50%); }
+  main .md .tbl table { max-height: 80vh; border-collapse: separate; border-spacing: 0; }
+  main .md .tbl th, main .md .tbl td { border-width: 0 1px 1px 0; }
+  main .md .tbl tr > :first-child { border-left-width: 1px; }
+  main .md .tbl thead th { border-top-width: 1px; }
+  main .md .tbl th { position: sticky; top: 0; z-index: 2; }
+  main .md .tbl td:first-child:not(.wide), main .md .tbl th:first-child:not(.wide) {
+    position: sticky; left: 0; z-index: 1; background-color: var(--bg);
+  }
+  main .md .tbl th:first-child:not(.wide) { z-index: 3; background-color: var(--soft); }
+  main .md .tbl tr:nth-child(2n) td:first-child { background-color: color-mix(in srgb, var(--soft) 50%, var(--bg)); }
+}
+@media (min-width: 1000px) {
+  .side-open { --tbl-max: calc(100vw - var(--side) - 2 * var(--gutter) - 16px); }
+}
 
 @media (max-width: 700px) {
   .tbl-toggle {

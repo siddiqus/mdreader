@@ -153,6 +153,9 @@ export function highlight(text, lang) {
 const slug = s => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/g, '')
   .replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-');
 
+const NUM_UNIT = String.raw`(?:\s?(?:%|ms|s|[kmbx×]|[kmg]i?b))?`;
+const NUM_CELL = new RegExp(String.raw`^(?:[<>~≈±+−-]?[$€£]?\d[\d,]*(?:\.\d+)?${NUM_UNIT}(?:\s?[/–-]\s?[$€£]?\d[\d,]*(?:\.\d+)?${NUM_UNIT})*|[—–-])$`, 'i');
+
 export function renderMarkdown(src, fileRel) {
   const dir = path.posix.dirname(fileRel);
   const rewrite = (href, kind) => {
@@ -195,10 +198,18 @@ export function renderMarkdown(src, fileRel) {
       table({ header, rows }) {
         const heads = header.map(c => this.parser.parseInline(c.tokens));
         const labels = heads.map(h => esc(h.replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, ' ').trim()));
-        const align = c => (c.align ? ` style="text-align:${c.align}"` : '');
-        const th = header.map((c, i) => `<th${align(c)}>${heads[i]}</th>`).join('');
-        const trs = rows.map(r => `<tr>${r.map((c, i) =>
-          `<td data-label="${labels[i] || ''}"${align(c)}>${this.parser.parseInline(c.tokens)}</td>`).join('')}</tr>`).join('\n');
+        const cells = rows.map(r => r.map(c => this.parser.parseInline(c.tokens)
+          .replace(/<code>([^<]*)<\/code>/g, (_, t) => `<code>${t.replace(/\//g, '/<wbr>')}</code>`)));
+        const text = h => h.replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, ' ').trim();
+        const kind = header.map((_, i) => {
+          const col = cells.map(r => text(r[i] ?? '')).filter(Boolean);
+          if (col.some(t => /\d/.test(t)) && col.every(t => NUM_CELL.test(t))) return 'num';
+          return col.some(t => t.length > 40) ? 'wide' : '';
+        });
+        const attrs = (c, i) => (kind[i] ? ` class="${kind[i]}"` : '') + (c.align ? ` style="text-align:${c.align}"` : '');
+        const th = header.map((c, i) => `<th${attrs(c, i)}>${heads[i]}</th>`).join('');
+        const trs = rows.map((r, ri) => `<tr>${r.map((c, i) =>
+          `<td data-label="${labels[i] || ''}"${attrs(c, i)}>${cells[ri][i]}</td>`).join('')}</tr>`).join('\n');
         return `<div class="tbl"><button type="button" class="tbl-toggle" aria-label="Switch table layout">⇄</button>`
           + `<table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>\n`;
       },
